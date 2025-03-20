@@ -4,15 +4,20 @@ struct HeaderView: View {
     @EnvironmentObject private var userStore: UserStore
     @State private var showProfileMenu = false
     @State private var showEditProfile = false
+    @Environment(\.colorScheme) var colorScheme
+    
+    private var theme: ThemeProtocol.Type {
+        colorScheme == .dark ? Theme.DarkTheme.self : Theme.LightTheme.self
+    }
     
     var body: some View {
+        
         HStack {
             // Логотип приложения
-            Image("logo_white")
+            Image("logo")
                 .resizable()
                 .scaledToFit()
                 .frame(height: 24)
-                .foregroundColor(.white)
                 .padding(.leading, 16)
             
             Spacer()
@@ -23,43 +28,30 @@ struct HeaderView: View {
                 Image(systemName: "bell")
                     .resizable()
                     .frame(width: 20, height: 20)
-                    .foregroundColor(.primary)
+                    .foregroundColor(theme.buttonsBackgroundColor)
                 
-                // Профиль пользователя
-                Button(action: {
-                    withAnimation {
-                        showProfileMenu.toggle()
-                    }
-                }) {
-                    HStack {
-                        if userStore.avatarId.isEmpty {
-                            Image(systemName: "person.circle.fill")
-                                .resizable()
-                                .frame(width: 36, height: 36)
-                                .foregroundColor(.blue)
-                        } else {
-                            // Здесь должна быть загрузка аватара
-                            ProfileImage(avatarId: userStore.avatarId)
-                                .frame(width: 36, height: 36)
-                                .clipShape(Circle())
-                        }
-                        
-                        VStack(alignment: .leading) {
-                            Text(userStore.fullName)
-                                .font(.subheadline)
-                                .fontWeight(.medium)
-                            
-                            Text("Online")
-                                .font(.caption)
-                                .foregroundColor(.green)
-                        }
-                    }
-                }
+//                // Профиль пользователя
+//                Button(action: {
+//                    withAnimation {
+//                        showEditProfile.toggle()
+//                    }
+//                }) {
+//                    if userStore.avatarId.isEmpty {
+//                        Image(systemName: "person.circle.fill")
+//                            .resizable()
+//                            .frame(width: 36, height: 36)
+//                            .foregroundColor(Theme.LightTheme.primaryColor)
+//                    } else {
+//                        ProfileImage(avatarId: userStore.avatarId)
+//                            .frame(width: 36, height: 36)
+//                            .clipShape(Circle())
+//                    }
+//                }
                 .popover(isPresented: $showProfileMenu, arrowEdge: .top) {
                     VStack(spacing: 10) {
                         Button(action: {
-                            showProfileMenu = false
-                            showEditProfile = true
+                            showProfileMenu = true
+                            showEditProfile = false
                         }) {
                             Label("Edit Profile", systemImage: "person.crop.circle")
                                 .padding()
@@ -85,11 +77,14 @@ struct HeaderView: View {
             .padding(.trailing, 16)
         }
         .frame(height: 60)
-        .background(Color(.systemGray6))
+    
         .sheet(isPresented: $showEditProfile) {
             EditProfileView()
         }
+       
+
     }
+    
 }
 
 struct ProfileImage: View {
@@ -106,9 +101,10 @@ struct ProfileImage: View {
             } else {
                 Image(systemName: "person.circle.fill")
                     .resizable()
-                    .foregroundColor(.blue)
+                    .foregroundColor(Theme.LightTheme.secondaryTextColor)
             }
         }
+       
         .onAppear {
             userStore.getImage(fileId: avatarId) { data in
                 if let data = data {
@@ -119,6 +115,7 @@ struct ProfileImage: View {
             }
         }
     }
+    
 }
 
 struct HeaderView_Previews: PreviewProvider {
@@ -126,4 +123,5 @@ struct HeaderView_Previews: PreviewProvider {
         HeaderView()
             .environmentObject(UserStore())
     }
-} 
+}
+

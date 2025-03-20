@@ -13,60 +13,77 @@
 //
 
 import SwiftUI
+import UIKit
 
 struct ContentView: View {
     @EnvironmentObject private var userStore: UserStore
     @EnvironmentObject private var chatStore: ChatStore
     @State private var selectedTab: Int = 0
     @AppStorage("isDarkMode") private var isDarkMode = false
+    @Environment(\.colorScheme) var colorScheme
+    
+    private var theme: ThemeProtocol.Type {
+        colorScheme == .dark ? Theme.DarkTheme.self : Theme.LightTheme.self
+    }
     
     var body: some View {
-        ZStack {
-            // Фон для всего приложения в зависимости от темы
-            (isDarkMode ? Theme.DarkTheme.backgroundColor : Theme.LightTheme.backgroundColor)
-                .edgesIgnoringSafeArea(.all)
-            
-            if userStore.isAuthenticated {
-                VStack(spacing: 0) {
-                    // Верхний заголовок с блюром
-                    HeaderView()
-                        .background(.ultraThinMaterial)
-                    
-                    // Основной контент
-                    ZStack {
-                        switch selectedTab {
-                        case 0:
-                            HomeView()
-                        case 1:
-                            ChatInterfaceView()
-                        case 2:
-                            ColleaguesView()
-                        case 3:
-                            StorageView()
-                        case 4:
-                            MiniAppsView()
-                        default:
-                            HomeView()
+            ZStack {
+                // Фон для всего приложения в зависимости от темы
+                (isDarkMode ? Theme.DarkTheme.backgroundColor : Theme.LightTheme.backgroundColor)
+                    .edgesIgnoringSafeArea(.all)
+                
+                if userStore.isAuthenticated {
+                    GeometryReader { geometry in
+                        // Основной контент с отступами
+                        ZStack {
+                            switch selectedTab {
+                            case 0:
+                                HomeView()
+
+                            case 1:
+                                ChatInterfaceView()
+                                
+                            case 2:
+                                ColleaguesView()
+                             
+                            case 3:
+                                StorageView()
+                                
+                            case 4:
+                                MiniAppsView()
+                              
+                            default:
+                                HomeView()
+                               
+                            }
+                        }
+                        .onAppear {
+                            userStore.fetchData()
+                            chatStore.fetchChats()
+                        }
+                        
+                        // Верхний заголовок с блюром
+                        VStack {
+                            HeaderView()
+                                .background(.ultraThinMaterial)
+                            Spacer()
+                        }
+                        
+                        // Нижняя панель навигации с блюром
+                        VStack {
+                            Spacer()
+                            BottomSidebarView(selectedTab: $selectedTab)
+                                .background(.ultraThinMaterial)
+                               
                         }
                     }
-                    
-                    // Нижняя панель навигации с блюром
-                    BottomSidebarView(selectedTab: $selectedTab)
-                        .frame(height: 70)
-                        .background(.ultraThinMaterial)
+                } else {
+                    LoginView()
                 }
-                .onAppear {
-                    userStore.fetchData()
-                    chatStore.fetchChats()
-                }
-            } else {
-                LoginView()
             }
+            .preferredColorScheme(isDarkMode ? .dark : .light)
         }
-        .preferredColorScheme(isDarkMode ? .dark : .light)
     }
-}
-
 // Нижняя панель навигации
 struct BottomSidebarView: View {
     @Binding var selectedTab: Int
@@ -108,8 +125,12 @@ struct BottomSidebarView: View {
                 action: { selectedTab = 4 }
             )
         }
-        .padding(.bottom, 5)
+        .padding( 10)
+        
+        
     }
+    
+    
 }
 
 // Кнопка для нижней панели
@@ -118,20 +139,26 @@ struct BottomTabButton: View {
     let title: String
     let isSelected: Bool
     let action: () -> Void
+    @Environment(\.colorScheme) var colorScheme
+    private var theme: ThemeProtocol.Type {
+        colorScheme == .dark ? Theme.DarkTheme.self : Theme.LightTheme.self
+    }
     
     var body: some View {
         Button(action: action) {
             VStack(spacing: 4) {
                 Image(systemName: icon)
                     .font(.system(size: 22))
-                    .foregroundColor(isSelected ? .blue : .blue.opacity(0.5))
+                    .foregroundColor(isSelected ? theme.buttonsBackgroundColor : theme.buttonsBackgroundColor.opacity(0.5))
                 
                 Text(title)
                     .font(.custom("Racama-U", size: 10))
-                    .foregroundColor(isSelected ? .blue : .blue.opacity(0.5))
+                    .foregroundColor(isSelected ? theme.buttonsBackgroundColor : theme.buttonsBackgroundColor.opacity(0.5))
             }
-            .frame(maxWidth: .infinity)
+        
         }
+        .frame(maxWidth: .infinity)
+    
     }
 }
 
@@ -140,3 +167,4 @@ struct BottomTabButton: View {
         .environmentObject(UserStore())
         .environmentObject(ChatStore(userStore: UserStore()))
 }
+

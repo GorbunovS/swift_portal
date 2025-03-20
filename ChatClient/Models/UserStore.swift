@@ -516,6 +516,34 @@ class UserStore: ObservableObject {
         }
     }
     
+
+
+    func getImage(fileId: String) async throws -> URL? {
+
+
+        let url = URL(string: "\(apiURL)/api/file/get_file/\(fileId)")!
+        var request = URLRequest(url: url)
+        request.setValue("\(token)", forHTTPHeaderField: "Authorization")
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            
+
+            
+            // Создаём временный URL для файла
+            let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("\(fileId).jpg")
+            
+            try data.write(to: tempURL) // Сохраняем blob в файл
+            return tempURL // Возвращаем локальный URL
+        } catch {
+            if (error as? URLError)?.code == .notConnectedToInternet {
+                print("Ошибка сети при загрузке изображения")
+                return nil
+            }
+            throw error
+        }
+    }
+    
     func downloadAvatar(avatarId: String) async throws -> UIImage? {
         guard let token = token else {
             throw UserError.unauthorized

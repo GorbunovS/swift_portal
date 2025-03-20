@@ -83,6 +83,10 @@ struct EditProfileView: View {
                     .disabled(isLoading)
                 }
                 
+                Button(action: userStore.logout) {
+                    Text("Выйти из профиля")
+                }
+                
                 if showSuccess {
                     Section {
                         Text("Профиль успешно обновлен")

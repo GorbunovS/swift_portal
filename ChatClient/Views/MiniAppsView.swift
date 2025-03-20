@@ -18,7 +18,7 @@ struct MiniAppsView: View {
         if searchText.isEmpty {
             return apps
         } else {
-            return apps.filter { $0.name.localizedCaseInsensitiveContains(searchText) || 
+            return apps.filter { $0.name.localizedCaseInsensitiveContains(searchText) ||
                                 $0.description.localizedCaseInsensitiveContains(searchText) }
         }
     }
@@ -55,7 +55,9 @@ struct MiniAppsView: View {
                 ScrollView {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 150))], spacing: 16) {
                         ForEach(filteredApps) { app in
-                            AppCard(app: app)
+                            AppCard(app: app, isSelected: false) {
+                                // Действие при нажатии на карточку
+                            }
                         }
                     }
                     .padding()
@@ -77,43 +79,8 @@ struct MiniApp: Identifiable {
     let color: Color
 }
 
-struct AppCard: View {
-    let app: MiniApp
-    
-    var body: some View {
-        Button(action: {
-            // Запуск мини-приложения
-        }) {
-            VStack(spacing: 12) {
-                // Иконка
-                Image(systemName: app.icon)
-                    .font(.system(size: 32))
-                    .foregroundColor(.white)
-                    .frame(width: 64, height: 64)
-                    .background(app.color)
-                    .cornerRadius(16)
-                
-                // Название и описание
-                Text(app.name)
-                    .font(.headline)
-                    .foregroundColor(.primary)
-                
-                Text(app.description)
-                    .font(.caption)
-                    .foregroundColor(.gray)
-                    .multilineTextAlignment(.center)
-                    .lineLimit(2)
-            }
-            .padding()
-            .frame(maxWidth: .infinity)
-            .background(Color(.systemGray6))
-            .cornerRadius(12)
-        }
-    }
-}
-
 struct MiniAppsView_Previews: PreviewProvider {
     static var previews: some View {
         MiniAppsView()
     }
-} 
+}

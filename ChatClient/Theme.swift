@@ -64,8 +64,25 @@ extension Color {
 // Структура для определения шрифтов приложения
 struct FontTheme {
     static let title = Font.custom("Racama-U", size: 24)
-    static let header = Font.custom("Racama-U", size: 20)
-    static let body = Font.custom("Racama-U", size: 16)
-    static let caption = Font.custom("Racama-U", size: 14)
+    static let header = Font.custom("Racama-U", size: 16)
+    static let body = Font.custom("Racama-U", size: 12)
+    static let caption = Font.custom("Racama-U", size: 12)
     static let small = Font.custom("Racama-U", size: 12)
-} 
+}
+
+protocol ThemeProtocol {
+    static var backgroundColor: Color { get }
+    static var secondaryBackgroundColor: Color { get }
+    static var buttonsBackgroundColor: Color { get }
+    static var cardsBackgroundColor: Color { get }
+    static var hoverColor: Color { get }
+    static var textColor: Color { get }
+    static var secondTextColor: Color { get }
+    static var secondaryTextColor: Color { get }
+    static var primaryColor: Color { get }
+    static var secondaryColor: Color { get }
+    static var headerBg: Color { get }
+}
+
+extension Theme.LightTheme: ThemeProtocol {}
+extension Theme.DarkTheme: ThemeProtocol {} 
