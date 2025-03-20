@@ -1,14 +1,18 @@
 import Foundation
 import Combine
 import UIKit
+import Security
 
 class UserStore: ObservableObject {
     @Published var user: User?
     @Published var token: String?
+    
     @Published var avatarImage: UIImage? = nil
     @Published var isAuthenticated = false
     @Published var isLoading = false
     @Published var error: String?
+    @Published var refreshToken: String = ""
+    @Published var userId: String = ""
     @Published var firstName: String = ""
     @Published var lastName: String = ""
     @Published var avatarId: String = ""
@@ -36,54 +40,67 @@ class UserStore: ObservableObject {
     }
     
     init() {
-        // Восстанавливаем данные при инициализации
+        // Restore user data when initializing
         restoreUserData()
     }
     
     private func restoreUserData() {
-        // Восстанавливаем токен
+        // Restore token and set authentication state
         if let savedToken = userDefaults.string(forKey: "token") {
             self.token = savedToken
             self.isAuthenticated = true
         }
         
-        // Восстанавливаем данные пользователя
-        if let userData = userDefaults.data(forKey: "userData"),
-           let decodedUser = try? JSONDecoder().decode(User.self, from: userData) {
-            self.user = decodedUser
-            self.firstName = decodedUser.firstName
-            self.lastName = decodedUser.lastName
-            // Restore user ID
-            userDefaults.set(decodedUser.id, forKey: "userId")
+        // Restore user ID
+        if let userId = userDefaults.string(forKey: "user_id") {
+            self.userId = userId
         }
         
-        // Восстанавливаем avatarId
-        if let savedAvatarId = userDefaults.string(forKey: "avatarId") {
+        // Restore first name and last name
+        self.firstName = userDefaults.string(forKey: "first_name") ?? ""
+        self.lastName = userDefaults.string(forKey: "last_name") ?? ""
+        
+        // Restore avatar ID
+        if let savedAvatarId = userDefaults.string(forKey: "avatar_id") {
             self.avatarId = savedAvatarId
         }
         
-        // Если есть токен, загружаем данные
+        // Restore full user object if available
+        if let userData = userDefaults.data(forKey: "userData"),
+           let decodedUser = try? JSONDecoder().decode(User.self, from: userData) {
+            self.user = decodedUser
+        }
+        
+        // If authenticated, fetch latest data from server
         if self.isAuthenticated {
             self.fetchData()
         }
     }
     
+    // Add a method to save all user data
     private func saveUserData() {
-        // Сохраняем токен
+        // Save token and authentication state
         if let token = self.token {
             userDefaults.set(token, forKey: "token")
         }
         
-        // Сохраняем данные пользователя
+        // Save user ID
+        userDefaults.set(self.userId, forKey: "user_id")
+        
+        // Save first name and last name
+        userDefaults.set(self.firstName, forKey: "first_name")
+        userDefaults.set(self.lastName, forKey: "last_name")
+        
+        // Save avatar ID
+        userDefaults.set(self.avatarId, forKey: "avatar_id")
+        
+        // Save full user object if available
         if let user = self.user,
            let encodedUser = try? JSONEncoder().encode(user) {
             userDefaults.set(encodedUser, forKey: "userData")
         }
         
-        // Сохраняем avatarId
-        userDefaults.set(self.avatarId, forKey: "avatarId")
-        
-        // Синхронизируем изменения
+        // Ensure changes are synchronized
         userDefaults.synchronize()
     }
     
@@ -92,32 +109,35 @@ class UserStore: ObservableObject {
         fetchUsers()
     }
     
-    func refreshData() async {
-        print("Starting data refresh")
-        DispatchQueue.main.async {
-            self.isLoading = true
-        }
-        
-        // Создаем группу для параллельного выполнения запросов
-        let group = DispatchGroup()
-        
-        // Обновляем новости
-        group.enter()
-        fetchNews()
-        group.leave()
-        
-        // Обновляем список пользователей
-        group.enter()
-        fetchUsers()
-        group.leave()
-        
-        // Ждем завершения всех запросов
-        group.wait()
-        
-        DispatchQueue.main.async {
-            self.isLoading = false
-        }
+    func savePasswordToKeychain(password: String, for account: String) -> Bool {
+        let passwordData = password.data(using: .utf8)!
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: account,
+            kSecValueData as String: passwordData
+        ]
+        SecItemDelete(query as CFDictionary) // Удаляем старый пароль, если он есть
+        let status = SecItemAdd(query as CFDictionary, nil)
+        return status == errSecSuccess
     }
+
+    func getPasswordFromKeychain(for account: String) -> String? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: account,
+            kSecReturnData as String: kCFBooleanTrue!,
+            kSecMatchLimit as String: kSecMatchLimitOne
+        ]
+        var dataTypeRef: AnyObject?
+        let status = SecItemCopyMatching(query as CFDictionary, &dataTypeRef)
+        if status == errSecSuccess, let data = dataTypeRef as? Data {
+            return String(data: data, encoding: .utf8)
+        }
+        return nil
+    }
+
+    
+
     
     func fetchNews() {
         guard let url = URL(string: "\(apiURL)/news") else { return }
@@ -154,110 +174,74 @@ class UserStore: ObservableObject {
     }
     
     func login(userLogin: String, password: String, completion: @escaping (Bool, String?) -> Void) {
-        // Используем правильный URL и параметры согласно коду сервера
         guard let url = URL(string: "\(baseURL)/api/auth/login") else {
             completion(false, "Invalid URL")
             return
         }
-        
-        print("Using login URL: \(url.absoluteString)")
-        
-        // Используем правильные названия параметров: user_login и password
+
         let parameters: [String: String] = ["user_login": userLogin, "password": password]
-        
-        print("Login parameters: \(parameters)")
-        
+
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        
+
         do {
             request.httpBody = try JSONSerialization.data(withJSONObject: parameters)
         } catch {
             completion(false, "Failed to serialize request")
             return
         }
-        
+
         URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
-            if let httpResponse = response as? HTTPURLResponse {
-                print("HTTP status code: \(httpResponse.statusCode)")
-            }
-            
-            guard let data = data else {
+            guard let self = self, let data = data else {
                 completion(false, error?.localizedDescription ?? "No data received")
                 return
             }
-            
-            // Отладочный вывод
-            if let jsonString = String(data: data, encoding: .utf8) {
-                print("Login response: \(jsonString)")
-            }
-            
-            self?.processServerLoginResponse(data: data, userLogin: userLogin, completion: completion)
-        }.resume()
-    }
-    
-    private func processServerLoginResponse(data: Data, userLogin: String, completion: @escaping (Bool, String?) -> Void) {
-        do {
-            let jsonObject = try JSONSerialization.jsonObject(with: data)
-            print("JSON structure: \(jsonObject)")
-            
-            if let json = jsonObject as? [String: Any] {
-                print("JSON keys: \(json.keys)")
+
+            do {
+                let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any]
                 
-                if let error = json["error"] as? String {
-                    print("Server error: \(error)")
-                    completion(false, "Server error: \(error)")
-                    return
-                }
-                
-                if let accessToken = json["access_token"] as? String,
-                   let userId = json["user_id"] as? Int,
-                   let firstName = json["first_name"] as? String,
-                   let lastName = json["last_name"] as? String {
-                    
-                    print("Login successful!")
-                    
+                if let token = json?["access_token"] as? String {
                     DispatchQueue.main.async {
-                        self.token = accessToken
-                        // Initialize user with empty position if not provided
-                        let position = json["position"] as? String ?? ""
-                        self.user = User(id: userId, firstName: firstName, lastName: lastName, email: userLogin, position: position)
-                        self.firstName = firstName
-                        self.lastName = lastName
+                        self.token = token
                         self.isAuthenticated = true
                         
-                        if let avatarId = json["avatar_id"] as? String {
+                        if let firstName = json?["first_name"] as? String {
+                            self.firstName = firstName
+                        }
+
+                        if let lastName = json?["last_name"] as? String {
+                            self.lastName = lastName
+                        }
+
+                        if let userId = json?["user_id"] as? String {
+                            self.userId = userId
+                        }
+
+                        if let avatarId = json?["avatar_id"] as? String {
                             self.avatarId = avatarId
                         }
                         
-                        // Save user ID to UserDefaults
-                        self.userDefaults.set(userId, forKey: "userId")
-                        
-                        // Сохраняем все данные
+                        // Save all user data after successful login
                         self.saveUserData()
-                        
-                        // Настраиваем WebSocket после успешного входа
-                        NotificationCenter.default.post(name: NSNotification.Name("UserDidLogin"), object: nil)
                         
                         completion(true, nil)
                     }
                 } else {
-                    print("Missing required fields in response")
-                    completion(false, "Invalid server response: missing required fields")
+                    DispatchQueue.main.async {
+                        completion(false, "Invalid credentials")
+                    }
                 }
-            } else {
-                print("JSON is not a dictionary")
-                completion(false, "Invalid response format (not a dictionary)")
+            } catch {
+                DispatchQueue.main.async {
+                    completion(false, "Failed to parse server response")
+                }
             }
-        } catch {
-            print("Parse error details: \(error)")
-            if let responseString = String(data: data, encoding: .utf8) {
-                print("Raw response: \(responseString)")
-            }
-            completion(false, "Failed to parse response: \(error.localizedDescription)")
-        }
+        }.resume()
+
     }
+    
+    
     
     func logout() {
         self.user = nil
@@ -269,13 +253,15 @@ class UserStore: ObservableObject {
         self.users = []
         self.news = []
         
-        // Очищаем UserDefaults
+        // Clear all saved user data
         userDefaults.removeObject(forKey: "token")
+        userDefaults.removeObject(forKey: "user_id")
+        userDefaults.removeObject(forKey: "first_name")
+        userDefaults.removeObject(forKey: "last_name")
+        userDefaults.removeObject(forKey: "avatar_id")
         userDefaults.removeObject(forKey: "userData")
-        userDefaults.removeObject(forKey: "avatarId")
-        userDefaults.removeObject(forKey: "userId")
         
-        // Синхронизируем изменения
+        // Ensure changes are synchronized
         userDefaults.synchronize()
     }
     
@@ -374,7 +360,6 @@ class UserStore: ObservableObject {
                             print("Updating first name to: \(firstName)")
                             DispatchQueue.main.async {
                                 self?.firstName = firstName
-                                self?.userDefaults.set(firstName, forKey: "first_name")
                             }
                         }
                         
@@ -382,11 +367,14 @@ class UserStore: ObservableObject {
                             print("Updating last name to: \(lastName)")
                             DispatchQueue.main.async {
                                 self?.lastName = lastName
-                                self?.userDefaults.set(lastName, forKey: "last_name")
                             }
                         }
                         
-                        completion(true, nil)
+                        // Save updated user data
+                        DispatchQueue.main.async {
+                            self?.saveUserData()
+                            completion(true, nil)
+                        }
                     } else {
                         print("Profile update failed: unexpected response format")
                         if let errorMessage = json["error"] as? String {
@@ -609,5 +597,4 @@ struct AvatarResponse: Codable {
     enum CodingKeys: String, CodingKey {
         case avatarId = "avatar_id"
     }
-} 
-
+}

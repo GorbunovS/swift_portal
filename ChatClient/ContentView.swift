@@ -59,7 +59,6 @@ struct ContentView: View {
                         }
                         .onAppear {
                             userStore.fetchData()
-                            chatStore.fetchChats()
                         }
                         
                         // Верхний заголовок с блюром
@@ -82,6 +81,12 @@ struct ContentView: View {
                 }
             }
             .preferredColorScheme(isDarkMode ? .dark : .light)
+            .onAppear {
+                // Проверяем авторизацию при запуске приложения
+                if userStore.isAuthenticated {
+                    userStore.fetchData()
+                }
+            }
         }
     }
 // Нижняя панель навигации

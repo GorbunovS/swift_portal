@@ -9,6 +9,7 @@ struct HomeView: View {
     @State private var avatarImage: UIImage? = nil
     @State private var selectedTab = 0 // 0 - Новости, 1 - Статьи
     @State private var selectedNews: News?
+    @State private var loginMessage: String?
     @State private var showEditProfile = false
     @Environment(\.colorScheme) var colorScheme
     @State private var selectedMiniApps: [MiniApp] = []
@@ -17,6 +18,7 @@ struct HomeView: View {
         colorScheme == .dark ? Theme.DarkTheme.self : Theme.LightTheme.self
     }
     
+    
     var body: some View {
         VStack(spacing: 0) {
             ScrollView {
@@ -24,28 +26,26 @@ struct HomeView: View {
                     // Профиль пользователя
                     HStack(spacing: 16) {
                         // Аватар пользователя
-                       
-                            Button(action: {
-                                withAnimation {
-                                    showEditProfile.toggle()
-                                }
-                            }) {
-                                if userStore.avatarId.isEmpty {
-                                    Image(systemName: "person.circle.fill")
-                                        .resizable()
-                                        .frame(width: 60, height: 60)
-                                        .foregroundColor(theme.buttonsBackgroundColor)
-                                } else {
-                                    ProfileImage(avatarId: userStore.avatarId)
-                                        .frame(width: 36, height: 36)
-                                        .clipShape(Circle())
-                                }
+                        Button(action: {
+                            withAnimation {
+                                showEditProfile.toggle()
                             }
-                            .sheet(isPresented: $showEditProfile) {
-                                EditProfileView()
+                        }) {
+                            if userStore.avatarId.isEmpty {
+                                Image(systemName: "person.circle.fill")
+                                    .resizable()
+                                    .frame(width: 60, height: 60)
+                                    .foregroundColor(theme.buttonsBackgroundColor)
+                            } else {
+                                ProfileImage(avatarId: userStore.avatarId)
+                                    .frame(width: 36, height: 36)
+                                    .clipShape(Circle())
                             }
+                        }
+                        .sheet(isPresented: $showEditProfile) {
+                            EditProfileView()
+                        }
 
-                        
                         VStack(alignment: .leading, spacing: 4) {
                             Text(userStore.fullName)
                                 .font(FontTheme.title)
@@ -57,8 +57,6 @@ struct HomeView: View {
                         }
                         
                         Spacer()
-                        
-                        
                     }
                     .padding(.horizontal)
                     .padding(.top)
@@ -66,8 +64,6 @@ struct HomeView: View {
                     ScrollView(.horizontal, showsIndicators: false) {
                         // Статистика (БИО профиля)
                         HStack(spacing: 16) {
-                          
-                            
                             StatisticCard(
                                 icon: "envelope",
                                 title: "Почта",
@@ -85,13 +81,13 @@ struct HomeView: View {
                             )
                             
                             StatisticCard(
-                                
                                 icon: "calendar",
                                 title: "Календарь",
                                 count: "5",
                                 color: .green,
                                 theme: theme
                             )
+                            
                             StatisticCard(
                                 icon: "plus.circle.fill",
                                 title: "Ещё",
@@ -99,35 +95,16 @@ struct HomeView: View {
                                 color: .blue,
                                 theme: theme
                             )
-              
-                            // Отображаем выбранные мини-приложения
-//                            ForEach(selectedMiniApps) { app in
-//                                MiniAppCard(app: app, isSelected: true) {
-//                                    // Убираем приложение из списка выбранных
-//                                    if let index = selectedMiniApps.firstIndex(where: { $0.id == app.id }) {
-//                                        selectedMiniApps.remove(at: index)
-//                                    }
-//                                }
-//
-//                            }
-
-
                         }
                         .padding(.horizontal)
                         .padding(.vertical)
                     }
-                 
-                    
-                   
-                    
-                  
                     
                     // Вкладки новостей и статей
                     HStack {
                         HStack {
                             Button(action: { selectedTab = 0 }) {
                                 Text("Новости")
-                                
                                     .font(FontTheme.header)
                                     .fontWeight(.bold)
                                     .padding(.vertical, 8)
@@ -165,7 +142,7 @@ struct HomeView: View {
                         // Экран новостей
                         ScrollView {
                             VStack(spacing: 20) {
-                                if isLoadingPosts {
+                                if userStore.isLoading {
                                     ProgressView()
                                         .padding()
                                 } else if chatStore.news.isEmpty {
@@ -180,7 +157,7 @@ struct HomeView: View {
                                     }
                                 }
                             }
-                            .padding(.top) // Добавляем отступ сверху
+                            .padding(.top)
                         }
                         .tag(0)
                         
@@ -192,47 +169,49 @@ struct HomeView: View {
                                         .padding(.horizontal)
                                 }
                             }
-                            .padding(.top) // Добавляем отступ сверху
+                            .padding(.top)
                         }
                         .tag(1)
                     }
-                    .tabViewStyle(.page(indexDisplayMode: .never)) // Отключаем индикатор страниц
-                    .frame(height: UIScreen.main.bounds.height * 0.6) // Настраиваем высоту
-                    
+                    .tabViewStyle(.page(indexDisplayMode: .never))
+                    .frame(height: UIScreen.main.bounds.height * 0.6)
                 }
             }
+
             .padding(.vertical, 60)
             .background(theme.backgroundColor)
             .edgesIgnoringSafeArea(.bottom)
             
             .onAppear {
-                userStore.fetchData()
                 Task { await loadNews() }
-                if !userStore.avatarId.isEmpty {
+                
+                // If we have an avatar ID but no avatar image, load it
+                if !userStore.avatarId.isEmpty && userStore.avatarImage == nil {
                     loadAvatar()
                 }
-            }
-            .refreshable {
-               
+                
+                // Print user data for debugging
+                print("User data on appear - Name: \(userStore.firstName) \(userStore.lastName)")
+                print("Avatar ID: \(userStore.avatarId)")
+                print("Is authenticated: \(userStore.isAuthenticated)")
             }
             .sheet(isPresented: $showMiniApps) {
                 MiniAppsSelectionView(selectedMiniApps: $selectedMiniApps)
             }
-            
             .sheet(isPresented: $showCreatePost) {
                 CreatePostView()
             }
-        
-            
             .sheet(item: $selectedNews) { news in
                 PostView(news: news)
-                
             }
-         
             
+            .refreshable {
+                print("имя: \(userStore.firstName)")
+                print("фамилия: \(userStore.lastName)")
+                    }
         }
-      
     }
+
 
     // Модель для временных статей
     struct Article: Identifiable {
@@ -304,16 +283,7 @@ struct HomeView: View {
             .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: 2)
         }
     }
-    private func refreshData() async {
-        isLoadingPosts = true
-        await userStore.refreshData()
-        do {
-            try await chatStore.fetchNews()
-        } catch {
-            print("Ошибка обновления данных: \(error)")
-        }
-        isLoadingPosts = false
-    }
+
     
     private func loadNews() async {
         isLoadingPosts = true

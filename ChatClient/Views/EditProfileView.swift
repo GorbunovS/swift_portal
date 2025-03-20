@@ -6,8 +6,6 @@ struct EditProfileView: View {
     @Environment(\.presentationMode) var presentationMode
     @AppStorage("isDarkMode") private var isDarkMode = false
     
-    @State private var firstName: String = ""
-    @State private var lastName: String = ""
     @State private var currentPassword: String = ""
     @State private var newPassword: String = ""
     @State private var confirmPassword: String = ""
@@ -54,8 +52,8 @@ struct EditProfileView: View {
                 }
                 
                 Section(header: Text("Личная информация")) {
-                    TextField("Имя", text: $firstName)
-                    TextField("Фамилия", text: $lastName)
+                    TextField("Имя", text: $userStore.firstName)
+                    TextField("Фамилия", text: $userStore.lastName)
                 }
                 
                 Section(header: Text("Настройки")) {
@@ -115,10 +113,6 @@ struct EditProfileView: View {
                     loadImage()
                 }
             }
-            .onAppear {
-                firstName = userStore.firstName
-                lastName = userStore.lastName
-            }
         }
     }
     
@@ -142,8 +136,8 @@ struct EditProfileView: View {
         }
         
         var profileData: [String: Any] = [
-            "first_name": firstName,
-            "last_name": lastName
+            "first_name": userStore.firstName,
+            "last_name": userStore.lastName
         ]
         
         if !newPassword.isEmpty {
@@ -170,10 +164,12 @@ struct EditProfileView: View {
             if success {
                 showSuccess = true
                 
-                // Очистить поля пароля после успешного обновления
+                // Clear password fields after successful update
                 currentPassword = ""
                 newPassword = ""
                 confirmPassword = ""
+                
+                // No need to manually update UserDefaults here as UserStore now handles this
             } else {
                 errorMessage = error ?? "Произошла ошибка при обновлении профиля"
                 showError = true
@@ -181,7 +177,6 @@ struct EditProfileView: View {
         }
     }
 }
-
 struct PHPickerView: UIViewControllerRepresentable {
     @Binding var image: UIImage?
     
@@ -228,4 +223,4 @@ struct EditProfileView_Previews: PreviewProvider {
         EditProfileView()
             .environmentObject(UserStore())
     }
-} 
+}

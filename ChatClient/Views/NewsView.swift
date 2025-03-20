@@ -19,9 +19,9 @@ struct NewsView: View {
                     List(chatStore.news) { news in
                         NewsRow(news: news)
                     }
-                    .refreshable {
-                        await loadNews()
-                    }
+//                    .refreshable {
+//                        await loadNews()
+//                    }
                 }
             }
             .navigationTitle("Новости")

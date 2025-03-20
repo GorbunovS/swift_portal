@@ -50,10 +50,10 @@ class ChatStore: ObservableObject {
     }
     
     func setupWebSocket() {
-        guard let token = userDefaults.string(forKey: "token") else {
-            print("Error setting up WebSocket: No token")
-            return
-        }
+//        guard let token = userDefaults.string(forKey: "token") else {
+//            print("Error setting up WebSocket: No token")
+//            return
+//        }
         
         // Close existing connection if any
         socket?.cancel()
@@ -61,7 +61,7 @@ class ChatStore: ObservableObject {
         // Create WebSocket URL without socket.io path
         let socketHost = baseURL.replacingOccurrences(of: "http://", with: "")
                                .replacingOccurrences(of: "https://", with: "")
-        let socketURL = "\(wsProtocol)://\(socketHost)/ws?token=\(token)"
+        let socketURL = "\(wsProtocol)://\(socketHost)/ws?token=\(userStore.token)"
         print("Connecting to WebSocket: \(socketURL)")
         
         guard let url = URL(string: socketURL) else {
@@ -315,7 +315,7 @@ class ChatStore: ObservableObject {
     }
     
     func fetchChats(completion: @escaping (Error?) -> Void) {
-        guard let token = userDefaults.string(forKey: "token") else {
+        guard let token = userStore.token else {
             let error = NSError(domain: "No token", code: -1, userInfo: nil)
             print("Error fetching chats: \(error)")
             DispatchQueue.main.async {

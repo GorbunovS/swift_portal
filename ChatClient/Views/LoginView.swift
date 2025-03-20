@@ -14,6 +14,7 @@ struct LoginView: View {
                 .edgesIgnoringSafeArea(.all)
             
             VStack(spacing: 20) {
+                Spacer()
                 // Логотип и заголовок
                 VStack(spacing: 8) {
                     Image("logo_white")
