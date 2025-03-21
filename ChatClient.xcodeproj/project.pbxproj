@@ -33,30 +33,9 @@
 		EB41A38C2D883FDE0080590F /* ChatClientUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ChatClientUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		EB41A6432D8C02750080590F /* Exceptions for "ChatClient" folder in "ChatClientTests" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				"Fonts/Users/stanislavgorbunov/chat-client/swift/ChatClient/ChatClient/Fonts/Racama-U.otf",
-			);
-			target = EB41A3812D883FDE0080590F /* ChatClientTests */;
-		};
-		EB41A6442D8C02750080590F /* Exceptions for "ChatClient" folder in "ChatClientUITests" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				"Fonts/Users/stanislavgorbunov/chat-client/swift/ChatClient/ChatClient/Fonts/Racama-U.otf",
-			);
-			target = EB41A38B2D883FDE0080590F /* ChatClientUITests */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
-
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		EB41A3742D883FDC0080590F /* ChatClient */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				EB41A6432D8C02750080590F /* Exceptions for "ChatClient" folder in "ChatClientTests" target */,
-				EB41A6442D8C02750080590F /* Exceptions for "ChatClient" folder in "ChatClientUITests" target */,
-			);
 			path = ChatClient;
 			sourceTree = "<group>";
 		};

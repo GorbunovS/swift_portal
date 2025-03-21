@@ -19,6 +19,7 @@ struct ContentView: View {
     @EnvironmentObject private var userStore: UserStore
     @EnvironmentObject private var chatStore: ChatStore
     @State private var selectedTab: Int = 0
+    @State private var isChatOpen: Bool = false
     @AppStorage("isDarkMode") private var isDarkMode = false
     @Environment(\.colorScheme) var colorScheme
     @State private var selectedMiniApps: [MiniApp] = []
@@ -42,7 +43,7 @@ struct ContentView: View {
                                 HomeView()
 
                             case 1:
-                                ChatInterfaceView()
+                                ChatInterfaceView(isChatOpen: $isChatOpen)
                                 
                             case 2:
                                 ColleaguesView()
@@ -63,20 +64,23 @@ struct ContentView: View {
                         }
                         
                         // Верхний заголовок с блюром
-                        VStack {
-                            HeaderView()
-                                .background(.ultraThinMaterial)
-                            Spacer()
-                        }
-                        
-                        // Нижняя панель навигации с блюром
-                        VStack {
-                            Spacer()
-                            BottomSidebarView(selectedTab: $selectedTab)
-                                .background(.ultraThinMaterial)
-                               
-                        }
-                    }
+                                      if !isChatOpen {
+                                          VStack {
+                                              HeaderView()
+                                                  .background(.ultraThinMaterial)
+                                              Spacer()
+                                          }
+                                      }
+                                      
+                                      // Нижняя панель навигации с блюром
+                                      if !isChatOpen {
+                                          VStack {
+                                              Spacer()
+                                              BottomSidebarView(selectedTab: $selectedTab)
+                                                  .background(.ultraThinMaterial)
+                                          }
+                                      }
+                                  }
                 } else {
                     LoginView()
                 }
