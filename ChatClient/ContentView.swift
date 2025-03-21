@@ -21,6 +21,7 @@ struct ContentView: View {
     @State private var selectedTab: Int = 0
     @AppStorage("isDarkMode") private var isDarkMode = false
     @Environment(\.colorScheme) var colorScheme
+    @State private var selectedMiniApps: [MiniApp] = []
     
     private var theme: ThemeProtocol.Type {
         colorScheme == .dark ? Theme.DarkTheme.self : Theme.LightTheme.self
@@ -50,7 +51,7 @@ struct ContentView: View {
                                 StorageView()
                                 
                             case 4:
-                                MiniAppsView()
+                                MiniAppsView(selectedMiniApps: $selectedMiniApps)
                               
                             default:
                                 HomeView()
@@ -86,8 +87,28 @@ struct ContentView: View {
                 if userStore.isAuthenticated {
                     userStore.fetchData()
                 }
+                
+                // Загружаем выбранные мини-приложения при запуске
+                loadSelectedMiniApps()
             }
         }
+    
+    private func loadSelectedMiniApps() {
+        // Загружаем ID выбранных приложений из UserDefaults
+        if let selectedMiniAppsData = UserDefaults.standard.data(forKey: "selectedMiniApps"),
+           let decodedIds = try? JSONDecoder().decode([Int].self, from: selectedMiniAppsData) {
+            
+            // Получаем список всех доступных мини-приложений
+            let allMiniApps = MiniAppsView(selectedMiniApps: $selectedMiniApps).allMiniApps
+            
+            // Фильтруем только выбранные приложения
+            selectedMiniApps = allMiniApps.filter { decodedIds.contains($0.id) }
+        } else {
+            // По умолчанию выбираем первые 3 приложения, если ничего не выбрано
+            let allMiniApps = MiniAppsView(selectedMiniApps: $selectedMiniApps).allMiniApps
+            selectedMiniApps = Array(allMiniApps.prefix(3))
+        }
+    }
     }
 // Нижняя панель навигации
 struct BottomSidebarView: View {
@@ -172,4 +193,3 @@ struct BottomTabButton: View {
         .environmentObject(UserStore())
         .environmentObject(ChatStore(userStore: UserStore()))
 }
-

@@ -13,6 +13,7 @@ struct HomeView: View {
     @State private var showEditProfile = false
     @Environment(\.colorScheme) var colorScheme
     @State private var selectedMiniApps: [MiniApp] = []
+    @State private var animatingAppId: Int? = nil
     
     private var theme: ThemeProtocol.Type {
         colorScheme == .dark ? Theme.DarkTheme.self : Theme.LightTheme.self
@@ -27,6 +28,7 @@ struct HomeView: View {
                     HStack(spacing: 16) {
                         // Аватар пользователя
                         Button(action: {
+                            HapticManager.shared.impactOccurred(style: .light)
                             withAnimation {
                                 showEditProfile.toggle()
                             }
@@ -62,39 +64,61 @@ struct HomeView: View {
                     .padding(.top)
                     
                     ScrollView(.horizontal, showsIndicators: false) {
-                        // Статистика (БИО профиля)
+                        // Мини-приложения
                         HStack(spacing: 16) {
-                            StatisticCard(
-                                icon: "envelope",
-                                title: "Почта",
-                                count: "100+",
-                                color: .blue,
-                                theme: theme
-                            )
+                            // Отображаем выбранные мини-приложения
+                            ForEach(selectedMiniApps) { app in
+                                MiniAppCard(
+                                    app: app,
+                                    isSelected: false,
+                                    isSelectionMode: false,
+                                    theme: theme,
+                                    isAnimating: animatingAppId == app.id
+                                )
+                                .onTapGesture {
+                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                                        animatingAppId = app.id
+                                    }
+                                    
+                                    // Добавляем небольшую задержку перед обработкой нажатия
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                                        openMiniApp(app)
+                                        animatingAppId = nil
+                                    }
+                                }
+                            }
                             
-                            StatisticCard(
-                                icon: "briefcase",
-                                title: "Задачи",
-                                count: "5",
-                                color: .orange,
-                                theme: theme
-                            )
-                            
-                            StatisticCard(
-                                icon: "calendar",
-                                title: "Календарь",
-                                count: "5",
-                                color: .green,
-                                theme: theme
-                            )
-                            
-                            StatisticCard(
-                                icon: "plus.circle.fill",
-                                title: "Ещё",
-                                count: " ",
-                                color: .blue,
-                                theme: theme
-                            )
+                            // Кнопка "Ещё"
+                            Button(action: {
+                                HapticManager.shared.impactOccurred()
+                                withAnimation {
+                                    showMiniApps = true
+                                }
+                            }) {
+                                VStack(spacing: 8) {
+                                    Image(systemName: "plus.circle.fill")
+                                        .font(.title2)
+                                        .foregroundColor(.white)
+                                        .frame(width: 50, height: 50)
+                                        .background(.blue)
+                                        .cornerRadius(12)
+                                    
+                                    Text(" ")
+                                        .font(FontTheme.title)
+                                        .fontWeight(.bold)
+                                        .foregroundColor(theme.textColor)
+                                    
+                                    Text("Ещё")
+                                        .font(FontTheme.caption)
+                                        .foregroundColor(theme.secondTextColor)
+                                }
+                                .frame(width: 80, height: 120)
+                                .padding()
+                                .background(theme.cardsBackgroundColor)
+                                .cornerRadius(25)
+                                .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: 2)
+                            }
+                            .buttonStyle(BouncyButtonStyle())
                         }
                         .padding(.horizontal)
                         .padding(.vertical)
@@ -103,7 +127,14 @@ struct HomeView: View {
                     // Вкладки новостей и статей
                     HStack {
                         HStack {
-                            Button(action: { selectedTab = 0 }) {
+                            Button(action: {
+                                if selectedTab != 0 {
+                                    HapticManager.shared.selectionChanged()
+                                    withAnimation {
+                                        selectedTab = 0
+                                    }
+                                }
+                            }) {
                                 Text("Новости")
                                     .font(FontTheme.header)
                                     .fontWeight(.bold)
@@ -114,7 +145,14 @@ struct HomeView: View {
                                     .cornerRadius(16)
                             }
                             
-                            Button(action: { selectedTab = 1 }) {
+                            Button(action: {
+                                if selectedTab != 1 {
+                                    HapticManager.shared.selectionChanged()
+                                    withAnimation {
+                                        selectedTab = 1
+                                    }
+                                }
+                            }) {
                                 Text("Статьи")
                                     .font(FontTheme.header)
                                     .fontWeight(.bold)
@@ -129,11 +167,15 @@ struct HomeView: View {
                         
                         Spacer()
                         
-                        Button(action: { showCreatePost = true }) {
+                        Button(action: {
+                            HapticManager.shared.impactOccurred()
+                            showCreatePost = true
+                        }) {
                             Image(systemName: "plus.circle.fill")
                                 .foregroundColor(theme.buttonsBackgroundColor)
                                 .font(.title2)
                         }
+                        .buttonStyle(BouncyButtonStyle())
                     }
                     .padding(.horizontal)
                     
@@ -153,7 +195,10 @@ struct HomeView: View {
                                     ForEach(chatStore.news) { news in
                                         NewsCard(news: news, theme: theme)
                                             .padding(.horizontal)
-                                            .onTapGesture { selectedNews = news }
+                                            .onTapGesture {
+                                                HapticManager.shared.impactOccurred()
+                                                selectedNews = news
+                                            }
                                     }
                                 }
                             }
@@ -167,6 +212,9 @@ struct HomeView: View {
                                 ForEach(sampleArticles) { article in
                                     ArticleCard(article: article, theme: theme)
                                         .padding(.horizontal)
+                                        .onTapGesture {
+                                            HapticManager.shared.impactOccurred(style: .light)
+                                        }
                                 }
                             }
                             .padding(.top)
@@ -190,6 +238,9 @@ struct HomeView: View {
                     loadAvatar()
                 }
                 
+                // Загружаем выбранные мини-приложения
+                loadSelectedMiniApps()
+                
                 // Print user data for debugging
                 print("User data on appear - Name: \(userStore.firstName) \(userStore.lastName)")
                 print("Avatar ID: \(userStore.avatarId)")
@@ -206,9 +257,10 @@ struct HomeView: View {
             }
             
             .refreshable {
+                HapticManager.shared.impactOccurred()
                 print("имя: \(userStore.firstName)")
                 print("фамилия: \(userStore.lastName)")
-                    }
+            }
         }
     }
 
@@ -227,34 +279,6 @@ struct HomeView: View {
         Article(title: "10 полезных книг по программированию", content: "Список лучших книг, которые помогут стать профессионалом в кодинге.")
     ]
     
-    struct MiniAppCard: View {
-        let app: MiniApp
-        let isSelected: Bool
-        let action: () -> Void
-        
-        var body: some View {
-            Button(action: action) {
-                VStack(spacing: 8) {
-                    Image(systemName: app.icon)
-                        .font(.title2)
-                        .foregroundColor(.white)
-                        .frame(width: 50, height: 50)
-                        .background(app.color)
-                        .cornerRadius(12)
-                    
-                    Text(app.name)
-                        .font(FontTheme.caption)
-//                        .foregroundColor(theme.textColor)
-                        .lineLimit(1)
-                }
-                .padding()
-//                .background(theme.cardsBackgroundColor)
-                .cornerRadius(25)
-                .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: 2)
-            }
-        }
-    }
-
     // Карточка статьи
     struct ArticleCard: View {
         let article: Article
@@ -305,35 +329,64 @@ struct HomeView: View {
             }
         }
     }
+    
+    private func loadSelectedMiniApps() {
+        // Загружаем ID выбранных приложений из UserDefaults
+        if let selectedMiniAppsData = UserDefaults.standard.data(forKey: "selectedMiniApps"),
+           let decodedIds = try? JSONDecoder().decode([Int].self, from: selectedMiniAppsData) {
+            
+            // Получаем список всех доступных мини-приложений
+            let allMiniApps = MiniAppsView(selectedMiniApps: $selectedMiniApps).allMiniApps
+            
+            // Фильтруем только выбранные приложения
+            selectedMiniApps = allMiniApps.filter { decodedIds.contains($0.id) }
+        } else {
+            // По умолчанию выбираем первые 3 приложения, если ничего не выбрано
+            let allMiniApps = MiniAppsView(selectedMiniApps: $selectedMiniApps).allMiniApps
+            selectedMiniApps = Array(allMiniApps.prefix(3))
+        }
+    }
+    
+    private func openMiniApp(_ app: MiniApp) {
+        // Вибрация при открытии приложения
+        HapticManager.shared.impactOccurred()
+        
+        // Открываем веб-приложение
+        if let url = URL(string: app.url) {
+            let webView = MiniAppWebView(app: app)
+        
+            // Создаем UIHostingController для отображения SwiftUI View
+            let hostingController = UIHostingController(rootView: webView)
+        
+            // Получаем текущий UIViewController для отображения
+            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+               let rootViewController = windowScene.windows.first?.rootViewController {
+                rootViewController.present(hostingController, animated: true)
+            }
+        } else {
+            // Показываем ошибку, если URL неверный
+            HapticManager.shared.notificationOccurred(type: .error)
+            
+            let alertTitle = "Ошибка"
+            let alertMessage = "Не удалось открыть приложение \(app.name). Неверный URL."
+        
+            let alertController = UIAlertController(title: alertTitle, message: alertMessage, preferredStyle: .alert)
+            alertController.addAction(UIAlertAction(title: "OK", style: .default))
+        
+            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+               let rootViewController = windowScene.windows.first?.rootViewController {
+                rootViewController.present(alertController, animated: true)
+            }
+        }
+    }
 }
 
-struct StatisticCard: View {
-    let icon: String
-    let title: String
-    let count: String
-    let color: Color
-    let theme: ThemeProtocol.Type
-    
-    var body: some View {
-        VStack(spacing: 8) {
-            Image(systemName: icon)
-                .font(.title2)
-                .foregroundColor(color)
-            
-            Text(count)
-                .font(FontTheme.title)
-                .fontWeight(.bold)
-                .foregroundColor(theme.textColor)
-            
-            Text(title)
-                .font(FontTheme.caption)
-                .foregroundColor(theme.secondTextColor)
-        }
-        .frame(width: 70)
-        .padding()
-        .background(theme.cardsBackgroundColor)
-        .cornerRadius(25)
-        .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: 2)
+// Стиль кнопки с анимацией нажатия
+struct BouncyButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.9 : 1.0)
+            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: configuration.isPressed)
     }
 }
 
@@ -388,6 +441,7 @@ struct NewsCard: View {
         .background(theme.cardsBackgroundColor)
         .cornerRadius(15)
         .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: 2)
+        .contentShape(Rectangle())
     }
 }
 
